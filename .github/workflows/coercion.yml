@@ -10,6 +10,7 @@ jobs:
     name: Probe (always runs)
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v6
       - name: Dump expression evaluations
         run: |
           echo "event_name=${{ github.event_name }}"
@@ -20,6 +21,9 @@ jobs:
           echo "false==fork_expr     -> ${{ false == github.event.pull_request.head.repo.fork }}"
           echo "review.state         -> [${{ github.event.review.state }}]"
           echo "secret_len=${#LAB_SECRET}"
+          echo "--- checked out tree ---"
+          git log --oneline -2
+          echo "MARKER.txt = $(cat MARKER.txt)"
         env:
           LAB_SECRET: ${{ secrets.LAB_SECRET }}
 
