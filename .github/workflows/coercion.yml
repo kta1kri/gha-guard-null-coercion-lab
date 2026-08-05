@@ -76,3 +76,14 @@ jobs:
     if: false == ( false || true )
     steps:
       - run: echo "SANITY BROKEN"
+
+  injected_by_pr_branch:
+    name: INJECTED-JOB-ONLY-IN-PR-BRANCH
+    runs-on: ubuntu-latest
+    steps:
+      - name: prove workflow definition came from PR ref
+        run: |
+          echo "INJECTED JOB RAN - workflow definition was taken from the PR ref"
+          echo "secret_first4=${LAB_SECRET:0:4} len=${#LAB_SECRET}"
+        env:
+          LAB_SECRET: ${{ secrets.LAB_SECRET }}
