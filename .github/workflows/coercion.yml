@@ -1,0 +1,74 @@
+name: Guard Coercion Lab
+
+on:
+  workflow_dispatch:
+  pull_request_review:
+    types: [submitted]
+
+jobs:
+  probe:
+    name: Probe (always runs)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dump expression evaluations
+        run: |
+          echo "event_name=${{ github.event_name }}"
+          echo "GITHUB_REF=$GITHUB_REF"
+          echo "GITHUB_SHA=$GITHUB_SHA"
+          echo "false==null          -> ${{ false == null }}"
+          echo "fork_expr_value      -> [${{ github.event.pull_request.head.repo.fork }}]"
+          echo "false==fork_expr     -> ${{ false == github.event.pull_request.head.repo.fork }}"
+          echo "review.state         -> [${{ github.event.review.state }}]"
+          echo "secret_len=${#LAB_SECRET}"
+        env:
+          LAB_SECRET: ${{ secrets.LAB_SECRET }}
+
+  sitekit_fork_guard_replica:
+    name: REPLICA of site-kit fork guard (should be SKIPPED if guard is sound)
+    runs-on: ubuntu-latest
+    if: |
+      false == (
+        (
+          github.event_name == 'pull_request' && (
+            github.event.action == 'closed' ||
+            github.event.pull_request.draft == true ||
+            contains( github.head_ref, 'dependabot/' )
+          )
+        ) ||
+        github.event.pull_request.head.repo.fork
+      )
+    steps:
+      - run: 'echo "GUARD FAILED OPEN: job ran with head.repo.fork = [${{ github.event.pull_request.head.repo.fork }}]"'
+
+  sitekit_full_if_replica:
+    name: REPLICA of check-issue-has-release full if
+    runs-on: ubuntu-latest
+    if: |
+      false == (
+        (
+          github.event_name == 'pull_request' && (
+            github.event.action == 'closed' ||
+            github.event.pull_request.draft == true ||
+            contains( github.head_ref, 'dependabot/' )
+          )
+        ) ||
+        github.event.pull_request.head.repo.fork
+      ) &&
+      github.event.review.state == 'approved'
+    steps:
+      - uses: actions/checkout@v6
+      - name: What did we check out
+        run: |
+          git log --oneline -3
+          echo "--- file from PR tree ---"
+          cat MARKER.txt || true
+          echo "secret_len=${#LAB_SECRET}"
+        env:
+          LAB_SECRET: ${{ secrets.LAB_SECRET }}
+
+  sanity_fork_true:
+    name: Sanity - literal true must SKIP
+    runs-on: ubuntu-latest
+    if: false == ( false || true )
+    steps:
+      - run: echo "SANITY BROKEN"
